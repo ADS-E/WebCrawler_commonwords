@@ -1,11 +1,12 @@
 __author__ = 'Sasa2905'
+# -*- coding: utf-8 -*-
 from html.parser import HTMLParser
 from urllib.request import urlopen
 from urllib import parse
-import re
+import pandas as pd
 
-unique_words = set()
-
+unique_words_main = {}
+unique_words_websites = {}
 # We are going to create a class called LinkParser that inherits some
 # methods from HTMLParser which is why it is passed into the definition
 class LinkParser(HTMLParser):
@@ -30,9 +31,15 @@ class LinkParser(HTMLParser):
                     self.links = self.links + [newUrl]
 
     def handle_data(self, data):
-        if data != "\n" and "function" not in data:
+        if "\n" not in data and "\r" not in data and "function" not in data:
             stripped = data.strip().lower().replace("!", "").replace("?", "").replace(".","");
-            unique_words.update(stripped.split(" "))
+            for e in stripped.split(" "):
+                if len(e) > 4:
+                    value = unique_words_websites.get(e)
+                    if value is None:
+                        unique_words_websites[e] = 1
+
+
 
     # This is a new function that we are creating to get links
     # that our spider() function will call
@@ -55,36 +62,57 @@ class LinkParser(HTMLParser):
 
 # And finally here is our spider. It takes in an URL, a word to find,
 # and the number of pages to search through before giving up
-def spider(url, word, maxPages):
-    pagesToVisit = [url]
-    numberVisited = 0
-    foundWord = False
+def spider(url, maxPages):
     # The main loop. Create a LinkParser and get all the links on the page.
     # Also search the page for the word or string
     # In our getLinks function we return the web page
     # (this is useful for searching for the word)
     # and we return a set of links from that web page
     # (this is useful for where to go next)
-    while numberVisited < maxPages and pagesToVisit != [] and not foundWord:
-        numberVisited = numberVisited + 1
-        # Start from the beginning of our collection of pages to visit:
-        url = pagesToVisit[0]
-        pagesToVisit = pagesToVisit[1:]
-        try:
-            #print(numberVisited, "Visiting:", url)
-            parser = LinkParser()
-            data, links = parser.getLinks(url)
-            #print(data.replace("\n", "").split(">"))
-            # Add the pages that we visited to the end of our collection
-            # of pages to visit:
-            pagesToVisit = pagesToVisit + links
-            print(" **Success!**")
-            print(unique_words)
-        except:
-            print(" **Failed!**")
-    if foundWord:
-        print("The word", word, "was found at", url)
-    else:
-        print("Word never found")
+    listlinks = url
+    parser = LinkParser()
+    dataframe = pd.DataFrame()
+    for i in listlinks:
+        pagesToVisit = [i]
+        numberVisited = 0
+        while numberVisited < maxPages and pagesToVisit != []:
+            numberVisited = numberVisited + 1
+            # Start from the beginning of our collection of pages to visit:
+            url = pagesToVisit[0]
+            pagesToVisit = pagesToVisit[1:]
+            try:
+                print(numberVisited, "Visiting:", url)
+                data, links = parser.getLinks(url[0])
+                #print(data.replace("\n", "").split(">"))
+                # Add the pages that we visited to the end of our collection
+                # of pages to visit:
+                pagesToVisit = pagesToVisit + links
+                print(" **Success!**")
+            except Exception as e:
+                print(e)
+        converttomain()
+        unique_words_websites.clear()
+    dataframe = pd.DataFrame.from_dict(unique_words_main,orient='index')
+    print(dataframe.sort_values(0,ascending=False))
 
-spider("https://www.mediamarkt.nl", "Adres", 1)
+def converttomain():
+       if len(unique_words_main) is 0:
+            unique_words_main.update(unique_words_websites)
+       else:
+            for e in unique_words_websites:
+                value = unique_words_main.get(e)
+                if value is not None:
+                    value = value + 1
+                    unique_words_main[e] = value
+                else:
+                    unique_words_main[e] = 1
+
+
+
+
+
+#linklist = ["http://www.digitalspy.com/fun/news/a444700/longest-word-has-189819-letters-takes-three-hours-to-pronounce/","https://www.mediamarkt.nl", "https://www.bol.com","https://www.thuisbezorgd.nl","https://www.hotels.nl","https://www.weekendjeweg.nl"]
+data = pd.read_csv("webshops.csv")
+linklist = data[::50].as_matrix()
+#print(len(linklist))
+spider(linklist, 1)
