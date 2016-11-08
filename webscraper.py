@@ -4,6 +4,8 @@ from html.parser import HTMLParser
 from urllib.request import urlopen
 from urllib import parse
 import pandas as pd
+import CsvHelper as csv
+import numpy as np
 
 unique_words_main = {}
 unique_words_websites = {}
@@ -79,10 +81,12 @@ def spider(url, maxPages):
             numberVisited = numberVisited + 1
             # Start from the beginning of our collection of pages to visit:
             url = pagesToVisit[0]
+            if url[0] is not "h":
+                url = url[0]
             pagesToVisit = pagesToVisit[1:]
             try:
                 print(numberVisited, "Visiting:", url)
-                data, links = parser.getLinks(url[0])
+                data, links = parser.getLinks(url)
                 #print(data.replace("\n", "").split(">"))
                 # Add the pages that we visited to the end of our collection
                 # of pages to visit:
@@ -93,7 +97,8 @@ def spider(url, maxPages):
         converttomain()
         unique_words_websites.clear()
     dataframe = pd.DataFrame.from_dict(unique_words_main,orient='index')
-    print(dataframe.sort_values(0,ascending=False))
+    sorted_df = dataframe.sort_values(0,ascending=False)
+    sorted_df.to_csv("outputfile4.csv")
 
 def converttomain():
        if len(unique_words_main) is 0:
@@ -112,7 +117,9 @@ def converttomain():
 
 
 #linklist = ["http://www.digitalspy.com/fun/news/a444700/longest-word-has-189819-letters-takes-three-hours-to-pronounce/","https://www.mediamarkt.nl", "https://www.bol.com","https://www.thuisbezorgd.nl","https://www.hotels.nl","https://www.weekendjeweg.nl"]
-data = pd.read_csv("webshops.csv")
-linklist = data[::50].as_matrix()
-#print(len(linklist))
-spider(linklist, 1)
+#data = pd.read_csv("webshops.csv")
+data = pd.read_csv("outscope_new.csv",engine="python")
+linklist = data[::].as_matrix()
+#withinscope = [x[0] for x in linklist if x[1] == "X"]
+#outsidescope = [x[0] for x in linklist if x[1] != "X"]
+spider(linklist, 50)
